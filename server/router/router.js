@@ -1,58 +1,6 @@
 const express = require("express");
 const router = express.Router();
 
-// Middleware to select the appropriate database connection
-// const selectDatabaseConnection = async (req, res, next) => {
-//     const dbKey = req.query.db || "db1"; // Default to "db1"
-//     const dbConnections = req.app.get("dbConnections");
-  
-//     const keys = ["db1", "db2", "db3"];
-//     const selectedKeys = dbKey ? [dbKey, ...keys.filter((key) => key !== dbKey)] : keys; // Prioritize the requested key
-  
-//     for (const key of selectedKeys) {
-//       try {
-//         // Test the connection by running a simple query
-//         await dbConnections[key].promise().query("SELECT 1");
-//         req.dbConnection = dbConnections[key].promise(); // Use the first working connection
-//         return next();
-//       } catch (err) {
-//         console.error(`Database ${key} is not available:`, err.message);
-//       }
-//     }
-  
-//     return res.status(500).send({ error: "All databases are unavailable" });
-//   };
-//   // Use the middleware for all routes that require a database connection
-//   router.use(selectDatabaseConnection);
-  
-//   // Example route: Fetch games
-//   router.get("/api/games", async (req, res) => {
-//     try {
-//       const [rows] = await req.dbConnection.query(
-//         `SELECT 
-//           game_id,
-//           name,
-//           release_date,
-//           price,
-//           short_description,
-//           windows,
-//           mac,
-//           linux,
-//           metacritic_score,
-//           positive,
-//           negative,
-//           recommendations,
-//           average_playtime_forever,
-//           peak_ccu
-//         FROM games LIMIT 10;`
-//       );
-//       res.send(rows);
-//     } catch (err) {
-//       console.error("Error fetching games:", err);
-//       res.status(500).send("Error fetching games");
-//     }
-// });
-
 
 router.get("/api/test", (req, res) => {
   res.send({ 1: "Test" });
@@ -61,70 +9,80 @@ router.get("/api/test", (req, res) => {
 // Get
 router.get("/api/games", (req, res) => {
   const connection = req.app.get("dbConnection");
-  connection.query(
-    `SELECT 
-      game_id,
-      name,
-      release_date,
-      price,
-      short_description,
-      windows,
-      mac,
-      linux,
-      metacritic_score,
-      positive,
-      negative,
-      recommendations,
-      average_playtime_forever,
-      peak_ccu
-    FROM steamgames.games;`,
-    (err, rows) => {
-      if (err) {
-        console.error("Error Fetching Data:", err);
-        return res.status(500).send("Error Fetching Data");
-      }
 
-      if (rows.length === 0) {
-        return res.status(404).send("No tags found");
-      }
-
-      res.send(rows);
+  // Set the isolation level for the current session
+  connection.query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", (err) => {
+    if (err) {
+      console.error("Error setting isolation level:", err);
+      return res.status(500).send("Error Fetching Data");
     }
-  );
+
+    // Execute the SELECT query
+    connection.query(
+      `SELECT 
+        game_id,
+        name,
+        release_date,
+        price,
+        short_description,
+        windows,
+        mac,
+        linux,
+        metacritic_score,
+        positive,
+        negative,
+        recommendations,
+        average_playtime_forever,
+        peak_ccu
+      FROM steamgames.games;`,
+      (err, rows) => {
+        if (err) {
+          console.error("Error Fetching Data:", err);
+          return res.status(500).send("Error Fetching Data");
+        }
+
+        if (rows.length === 0) {
+          return res.status(404).send("No tags found");
+        }
+
+        res.send(rows);
+      }
+    );
+  });
 });
 
+// get single game
 router.get("/api/games/:id", (req, res) => {
   const connection = req.app.get("dbConnection");
   const { id } = req.params;
-  connection.query(
-    `SELECT
-      name,
-      release_date,
-      price,
-      short_description,
-      windows,
-      mac,
-      linux,
-      metacritic_score,
-      positive,
-      negative,
-      recommendations,
-      average_playtime_forever,
-      peak_ccu
-    FROM steamgames.games WHERE game_id = ${id};`,
-    (err, rows) => {
-      if (err) {
-        console.error("Error Fetching Data:", err);
-        return res.status(500).send("Error Fetching Data");
-      }
 
-      if (rows.length === 0) {
-        return res.status(404).send("No tags found");
-      }
+// Set the isolation level for this session
+  connection.query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", (err) => {
+    if (err) {
+    console.error("Error setting isolation level:", err);
+    return res.status(500).send({ success: false, message: "Error setting isolation level" });
+  }
 
-      res.send(rows);
+  const query = `
+    SELECT
+      game_id, name, release_date, price, short_description,
+      windows, mac, linux, metacritic_score, positive,
+      negative, recommendations, average_playtime_forever, peak_ccu, version
+    FROM steamgames.games WHERE game_id = ?;
+  `;
+
+  connection.query(query, [id], (err, rows) => {
+    if (err) {
+      console.error("Error Fetching Data:", err);
+      return res.status(500).send("Error Fetching Data");
     }
-  );
+
+    if (rows.length === 0) {
+      return res.status(404).send("No tags found");
+    }
+    res.send(rows[0]); // Return the single game object directly
+  });
+  });
 });
 
 // Update
@@ -145,49 +103,89 @@ router.put("/api/games/:id", (req, res) => {
     recommendations,
     average_playtime_forever,
     peak_ccu,
+    version
   } = req.body;
 
-  const query = `
-    UPDATE steamgames.games 
-    SET 
-      name = ?,
-      release_date  = ?,
-      price  = ?,
-      short_description  = ?,
-      windows  = ?,
-      mac  = ?,
-      linux  = ?,
-      metacritic_score  = ?,
-      positive = ?,
-      negative = ?,
-      recommendations = ?,
-      average_playtime_forever = ?,
-      peak_ccu = ?
-    WHERE game_id = ?;
-  `;
-
-  const values = [
-    name,
-    release_date,
-    price,
-    short_description,
-    windows,
-    mac,
-    linux,
-    metacritic_score,
-    positive,
-    negative,
-    recommendations,
-    average_playtime_forever,
-    peak_ccu,id];
-
-  connection.query(query, values, (err, result) => {
+  // Set isolation level to SERIALIZABLE for this transaction
+  connection.query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", (err) => {
     if (err) {
-      console.error("Error updating data:", err);
-      return res.status(500).send("Error updating data");
+      console.error("Error setting isolation level:", err);
+      return res.status(500).send({ success: false, message: "Error setting isolation level" });
     }
 
-    res.send({ success: true, message: "Game updated successfully", affectedRows: result.affectedRows });
+    const query = `
+      UPDATE steamgames.games 
+      SET 
+        name = ?,
+        release_date = ?,
+        price = ?,
+        short_description = ?,
+        windows = ?,
+        mac = ?,
+        linux = ?,
+        metacritic_score = ?,
+        positive = ?,
+        negative = ?,
+        recommendations = ?,
+        average_playtime_forever = ?,
+        peak_ccu = ?,
+        version = version + 1
+      WHERE game_id = ? AND version = ?;
+    `;
+
+    const values = [
+      name,
+      release_date,
+      price,
+      short_description,
+      windows,
+      mac,
+      linux,
+      metacritic_score,
+      positive,
+      negative,
+      recommendations,
+      average_playtime_forever,
+      peak_ccu,
+      id,
+      version,
+    ];
+
+    connection.beginTransaction((err) => {
+      if (err) {
+        console.error("Error starting transaction:", err);
+        return res.status(500).send("Error starting transaction");
+      }
+
+      connection.query(query, values, (err, result) => {
+        if (err) {
+          console.error("Error updating data:", err);
+          return connection.rollback(() => {
+            res.status(500).send("Error updating data");
+          });
+        }
+
+        if (result.affectedRows === 0) {
+          return connection.rollback(() => {
+            res.status(404).send("Record is updated by another transaction");
+          });
+        }
+
+        connection.commit((err) => {
+          if (err) {
+            console.error("Error committing transaction:", err);
+            return connection.rollback(() => {
+              res.status(500).send("Error committing transaction");
+            });
+          }
+
+          res.send({
+            message: "Game updated successfully",
+            affectedRows: result.affectedRows,
+          });
+        });
+      });
+    });
   });
 });
 
@@ -196,19 +194,52 @@ router.delete("/api/games/:id", (req, res) => {
   const connection = req.app.get("dbConnection");
   const { id } = req.params;
 
-  const query = `DELETE FROM steamgames.games WHERE game_id = ?;`;
-
-  connection.query(query, [id], (err, result) => {
+  // Set the isolation level for this operation
+  connection.query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", (err) => {
     if (err) {
-      console.error("Error deleting data:", err);
-      return res.status(500).send("Error deleting data");
+      console.error("Error setting isolation level:", err);
+      return res.status(500).send("Error setting isolation level");
     }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).send({ success: false, message: "Game not found" });
-    }
+    // Begin transaction
+    connection.beginTransaction((err) => {
+      if (err) {
+        console.error("Error starting transaction:", err);
+        return res.status(500).send("Error starting transaction");
+      }
 
-    res.send({ success: true, message: "Game deleted successfully", affectedRows: result.affectedRows });
+      const query = `DELETE FROM steamgames.games WHERE game_id = ?;`;
+
+      connection.query(query, [id], (err, result) => {
+        if (err) {
+          console.error("Error deleting data:", err);
+          return connection.rollback(() => {
+            res.status(500).send("Error deleting data");
+          });
+        }
+
+        if (result.affectedRows === 0) {
+          return connection.rollback(() => {
+            res.status(404).send("Game deleted already");
+          });
+        }
+
+        // Commit transaction
+        connection.commit((err) => {
+          if (err) {
+            console.error("Error committing transaction:", err);
+            return connection.rollback(() => {
+              res.status(500).send("Error committing transaction");
+            });
+          }
+
+          res.send({
+            message: "Game deleted successfully",
+            affectedRows: result.affectedRows,
+          });
+        });
+      });
+    });
   });
 });
 
@@ -231,6 +262,13 @@ router.post("/api/games", async (req, res) => {
     peak_ccu,
   } = req.body;
 
+  // Input validation
+  if (!name || !release_date || price === undefined || windows === undefined || mac === undefined || linux === undefined) {
+    return res.status(400).send(
+"Missing required fields: name, release_date, price, windows, mac, linux"
+    );
+  }
+
   const generateGameId = () => Math.floor(100000 + Math.random() * 900000);
 
   const getUniqueGameId = async () => {
@@ -252,6 +290,13 @@ router.post("/api/games", async (req, res) => {
   };
 
   try {
+    // Set isolation level to SERIALIZABLE for unique ID generation
+    await connection.promise().query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+
+    // Begin transaction
+    await connection.promise().beginTransaction();
+
+    // Generate unique game_id
     const game_id = await getUniqueGameId();
 
     const query = `
@@ -277,17 +322,24 @@ router.post("/api/games", async (req, res) => {
       peak_ccu,
     ];
 
-    connection.query(query, values, (err, result) => {
-      if (err) {
-        console.error("Error inserting data:", err);
-        return res.status(500).send({ success: false, message: "Error inserting data" });
-      }
+    const [result] = await connection.promise().query(query, values);
 
-      res.send({ success: true, message: "Game added successfully", game_id, insertedId: result.insertId });
+    // Commit transaction
+    await connection.promise().commit();
+
+    res.send({
+      success: true,
+      message: "Game added successfully",
+      game_id,
+      insertedId: result.insertId,
     });
   } catch (error) {
-    console.error("Error generating game_id:", error);
-    res.status(500).send({ success: false, message: "Error generating game_id" });
+    console.error("Error inserting data:", error);
+
+    // Rollback transaction in case of failure
+    await connection.promise().rollback();
+
+    res.status(500).send("Error inserting data");
   }
 });
 

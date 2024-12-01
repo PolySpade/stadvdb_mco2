@@ -25,7 +25,7 @@ const Sidebar = () => {
         <img src={logo} className=" h-10 mt-4 mb-10"/>
         <div className="flex flex-col items-center space-y-5 text-primary-content">
             <Link to="/">Home</Link>
-            <Link to="/">Meet the Team</Link>
+            <Link to="/about">About us</Link>
         </div>
         </div>
         </div>

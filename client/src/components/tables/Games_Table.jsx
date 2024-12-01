@@ -78,13 +78,14 @@ const Games_Table = () => {
       </div>
 
       {/* Games Table */}
-      <div className="overflow-x-auto">
-        <table className="table">
+      <div className="overflow-x-auto mx-4">
+        <table className="table bg-gray-800">
           <thead>
             <tr className="font-bold text-primary">
               <th>#</th>
               <th>Game ID</th>
               <th>Name</th>
+              <th>Short Description</th>
               <th>Release Date</th>
               <th>Price ($)</th>
               <th>Metacritic Score</th>
@@ -103,6 +104,7 @@ const Games_Table = () => {
                 <td>{indexOfFirstGame + index + 1}</td>
                 <td>{game.game_id}</td>
                 <td>{game.name}</td>
+                <td className="max-w-24 text-xs text-nowrap truncate hover:text-clip hover:text-wrap">{game.short_description}</td>
                 <td>{new Date(game.release_date).toLocaleDateString()}</td>
                 <td>{game.price}</td>
                 <td>{game.metacritic_score}</td>

@@ -17,6 +17,7 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
     recommendations: "",
     average_playtime_forever: "",
     peak_ccu: "",
+    version: 0
   });
 
   const API_URL = import.meta.env.VITE_API_URL;
@@ -26,6 +27,25 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
     const fetchGameData = async () => {
       try {
         const response = await axios.get(`${API_URL}/api/games/${game_id}`);
+        const gameData = response.data;
+        setFormData({
+          name: gameData.name || "",
+          release_date:
+            new Date(gameData.release_date).toISOString().split("T")[0] ||
+            "",
+          price: gameData.price || "",
+          short_description: gameData.short_description || "",
+          windows: gameData.windows || false,
+          mac: gameData.mac || false,
+          linux: gameData.linux || false,
+          metacritic_score: gameData.metacritic_score || "",
+          positive: gameData.positive || "",
+          negative: gameData.negative || "",
+          recommendations: gameData.recommendations || "",
+          average_playtime_forever: gameData.average_playtime_forever || "",
+          peak_ccu: gameData.peak_ccu || "",
+          version: gameData.version || 0,
+        });
       } catch (error) {
         console.error("Error fetching game data:", error);
         alert("Failed to load game data.");
@@ -49,6 +69,9 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
     onClose();
   };
 
+  const refreshPage = () => { 
+    window.location.reload(); 
+  }
   // Handle form submission for updating the game
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,23 +83,23 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
       onClose(); // Close the form after successful update
     } catch (error) {
       console.error("Error updating game:", error);
-      alert("Failed to update game. Please try again.");
+      alert(error.response.data);
+      refreshPage();  
     }
   };
 
-
-
   return (
     <div className="bg-neutral p-10 rounded-2xl">
-      <div>
-        Game ID: {game_id}
-      </div>
+      <div>Game ID: {game_id}</div>
       <div className="flex justify-end mb-2 -mt-6">
         <button onClick={handleCancel}>
           <IoClose className="text-white h-5 w-5 bg-slate-500 rounded-full" />
         </button>
       </div>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col">
+        <div className="flex flex-row mb-6">
+        <div className="mr-4">
+        <div className="text-bold text-primary text-xs mb-1">Game Name</div>
         <input
           type="text"
           name="name"
@@ -86,6 +109,7 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           className="input w-full max-w-xs"
           required
         />
+        <div className="text-bold text-primary text-xs mb-1">Date</div>
         <input
           type="date"
           name="release_date"
@@ -95,6 +119,8 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           className="input w-full max-w-xs"
           required
         />
+        <div className="text-bold text-primary text-xs mb-1">Price</div>
+
         <input
           type="number"
           name="price"
@@ -103,14 +129,20 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">
+          Short Description
+        </div>
+
         <textarea
           name="short_description"
           placeholder="Short Description"
           value={formData.short_description}
           onChange={handleInputChange}
-          className="textarea w-full max-w-xs"
+          className="textarea w-full max-w-xs h-32 resize-none"
         ></textarea>
-        <div className="flex gap-4">
+        <div className="text-bold text-primary text-xs mb-1">Compatibility</div>
+
+        <div className="flex gap-4 mb-2">
           <label className="flex">
             <input
               type="checkbox"
@@ -142,6 +174,11 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
             Linux
           </label>
         </div>
+</div>
+        <div>
+        <div className="text-bold text-primary text-xs mb-1">
+          Metacritic Score
+        </div>
         <input
           type="number"
           name="metacritic_score"
@@ -150,6 +187,10 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">
+          Positive Reviews
+        </div>
+
         <input
           type="number"
           name="positive"
@@ -158,6 +199,10 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">
+          Negative Reviews
+        </div>
+
         <input
           type="number"
           name="negative"
@@ -166,6 +211,10 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">
+          # of Recommendations
+        </div>
+
         <input
           type="number"
           name="recommendations"
@@ -174,6 +223,10 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">
+          Average Playtime Forever (Minutes)
+        </div>
+
         <input
           type="number"
           name="average_playtime_forever"
@@ -182,6 +235,8 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">Peak CCU</div>
+
         <input
           type="number"
           name="peak_ccu"
@@ -190,6 +245,10 @@ const Update_Form = ({ game_id, onClose, onSuccess }) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        
+        </div>
+
+        </div>
         <button type="submit" className="btn btn-primary">
           Update Game
         </button>

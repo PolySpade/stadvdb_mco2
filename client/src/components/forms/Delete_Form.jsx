@@ -14,13 +14,16 @@ const Delete_Form = ({ game_id, game_name, onClose, onSuccess }) => {
       onSuccess(); // Notify parent component of successful deletion
     } catch (error) {
       console.error("Error deleting game:", error);
-      alert("Failed to delete the game. Please try again.");
+      alert(error.response.data);
     } finally {
       setLoading(false);
       onClose(); // Close the form
+      refreshPage();
     }
   };
-
+  const refreshPage = () => { 
+    window.location.reload(); 
+  }
   return (
     <div className="bg-neutral p-10 rounded-2xl text-white">
       <div className="flex justify-end mb-2 -mt-6">

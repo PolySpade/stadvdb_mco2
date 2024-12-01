@@ -35,7 +35,9 @@ const Insert_Form = ( {onClose}) => {
   const handleCancel = () => {
     onClose();
   };
-
+  const refreshPage = () => { 
+    window.location.reload(); 
+  }
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,19 +60,23 @@ const Insert_Form = ( {onClose}) => {
         average_playtime_forever: "",
         peak_ccu: "",
       }); //reset
+      refreshPage();
     } catch (error) {
-      alert("Failed to add game. Please try again.");
+      alert(error.response.data);
     }
   };
 
   return (
-    <div className="bg-neutral p-10 rounded-2xl">
-      <div className="flex justify-end mb-2 -mt-6">
-      <button onClick={handleCancel}>
-        <IoClose className="text-white h-5 w-5 bg-slate-500 rounded-full" />
-      </button>
-      </div>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+<div className="bg-neutral p-10 rounded-2xl">
+  <div className="flex justify-end mb-2 -mt-6">
+    <button onClick={handleCancel}>
+      <IoClose className="text-white h-5 w-5 bg-slate-500 rounded-full" />
+    </button>
+  </div>
+  <form onSubmit={handleSubmit} className="flex flex-col">
+    <div className="flex flex-row mb-6">
+      <div className="mr-4">
+        <div className="text-bold text-primary text-xs mb-1">Game Name</div>
         <input
           type="text"
           name="name"
@@ -80,6 +86,7 @@ const Insert_Form = ( {onClose}) => {
           className="input w-full max-w-xs"
           required
         />
+        <div className="text-bold text-primary text-xs mb-1">Date</div>
         <input
           type="date"
           name="release_date"
@@ -89,6 +96,7 @@ const Insert_Form = ( {onClose}) => {
           className="input w-full max-w-xs"
           required
         />
+        <div className="text-bold text-primary text-xs mb-1">Price</div>
         <input
           type="number"
           name="price"
@@ -97,45 +105,50 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">Short Description</div>
         <textarea
           name="short_description"
           placeholder="Short Description"
           value={formData.short_description}
           onChange={handleInputChange}
-          className="textarea w-full max-w-xs"
+          className="textarea w-full max-w-xs h-32 resize-none"
         ></textarea>
-        <div className="flex gap-4">
-          <label className="flex">
+        <div className="text-bold text-primary text-xs mb-1">Compatibility</div>
+        <div className="flex gap-4 mb-2">
+          <label className="flex items-center">
             <input
               type="checkbox"
               name="windows"
               checked={formData.windows}
               onChange={handleInputChange}
-              className="checkbox"
+              className="checkbox mr-2"
             />
             Windows
           </label>
-          <label className="flex">
+          <label className="flex items-center">
             <input
               type="checkbox"
               name="mac"
               checked={formData.mac}
               onChange={handleInputChange}
-              className="checkbox"
+              className="checkbox mr-2"
             />
             Mac
           </label>
-          <label className="flex">
+          <label className="flex items-center">
             <input
               type="checkbox"
               name="linux"
               checked={formData.linux}
               onChange={handleInputChange}
-              className="checkbox"
+              className="checkbox mr-2"
             />
             Linux
           </label>
         </div>
+      </div>
+      <div>
+        <div className="text-bold text-primary text-xs mb-1">Metacritic Score</div>
         <input
           type="number"
           name="metacritic_score"
@@ -144,6 +157,7 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">Positive Reviews</div>
         <input
           type="number"
           name="positive"
@@ -152,6 +166,7 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">Negative Reviews</div>
         <input
           type="number"
           name="negative"
@@ -160,6 +175,7 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1"># of Recommendations</div>
         <input
           type="number"
           name="recommendations"
@@ -168,6 +184,9 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">
+          Average Playtime Forever (Minutes)
+        </div>
         <input
           type="number"
           name="average_playtime_forever"
@@ -176,6 +195,7 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
+        <div className="text-bold text-primary text-xs mb-1">Peak CCU</div>
         <input
           type="number"
           name="peak_ccu"
@@ -184,11 +204,14 @@ const Insert_Form = ( {onClose}) => {
           onChange={handleInputChange}
           className="input w-full max-w-xs"
         />
-        <button type="submit" className="btn btn-primary">
-          Add Game
-        </button>
-      </form>
+      </div>
     </div>
+    <button type="submit" className="btn btn-primary">
+      Add Game
+    </button>
+  </form>
+</div>
+
   );
 };
 
