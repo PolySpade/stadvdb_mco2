@@ -1,6 +1,5 @@
 const cors = require("cors");
 const express = require("express");
-
 const app = express();
 
 require("dotenv").config();
@@ -23,30 +22,6 @@ const connection = mysql.createConnection({
   password: process.env.DB_PASS,
   database: process.env.DB_DATABASE,
 });
-
-// sample pool
-// MySQL connection pools for three databases
-// const dbConnections = {
-//   db1: mysql.createPool({
-//     host: process.env.DB1_HOST,
-//     user: process.env.DB1_USER,
-//     password: process.env.DB1_PASS,
-//     database: process.env.DB1_DATABASE,
-//   }),
-//   db2: mysql.createPool({
-//     host: process.env.DB2_HOST,
-//     user: process.env.DB2_USER,
-//     password: process.env.DB2_PASS,
-//     database: process.env.DB2_DATABASE,
-//   }),
-//   db3: mysql.createPool({
-//     host: process.env.DB3_HOST,
-//     user: process.env.DB3_USER,
-//     password: process.env.DB3_PASS,
-//     database: process.env.DB3_DATABASE,
-//   }),
-// };
-
 
 app.use(cors(corsOptions));
 app.use(express.json());
