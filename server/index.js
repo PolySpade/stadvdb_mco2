@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 4000;
 const mysql = require("mysql2");
 
 const corsOptions = {
-  origin: true, 
+  origin: process.env.ORIGIN, 
   credentials: true, 
   optionSuccessStatus: 200
 };
