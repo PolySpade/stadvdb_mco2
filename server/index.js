@@ -3,7 +3,7 @@ const express = require("express");
 const app = express();
 
 require("dotenv").config();
-
+const DbConnections = require('./dbConnection');
 const router = require("./router/router")
 
 const PORT = process.env.PORT || 4000;
@@ -21,6 +21,9 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10, // Adjust as needed
+  queueLimit: 0,
 });
 
 app.use(cors(corsOptions));

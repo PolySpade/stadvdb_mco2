@@ -1,25 +1,130 @@
 const express = require("express");
 const router = express.Router();
-
+const DbConnections = require("../dbConnection");
 
 router.get("/api/test", (req, res) => {
   res.send({ 1: "Test" });
 });
+function sleep(milliseconds) {
+  const start = Date.now();
+  while (Date.now() - start < milliseconds) {
+      // Busy-wait loop to block the event loop
+  }
+}
 
 // Get
-router.get("/api/games", (req, res) => {
+router.get("/api/games", async (req, res) => {
   const connection = req.app.get("dbConnection");
 
-  // Set the isolation level for the current session
-  connection.query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", (err) => {
-    if (err) {
-      console.error("Error setting isolation level:", err);
-      return res.status(500).send("Error Fetching Data");
-    }
+  try {
+    // Function to get active reads count
+    const getActiveReads = async () => {
+      const [rows] = await connection.promise().query(
+        `SELECT COUNT(*) AS active_reads
+         FROM INFORMATION_SCHEMA.PROCESSLIST
+         WHERE COMMAND = 'Query' AND INFO LIKE 'SELECT%';`
+      );
+      return rows[0].active_reads;
+    };
 
-    // Execute the SELECT query
-    connection.query(
-      `SELECT 
+    // Get the current active reads
+    const activeReads = await getActiveReads();
+    console.log(`Active database reads: ${activeReads}`);
+
+    // Optionally handle high load (e.g., throttle requests or log warnings)
+    const maxReadsThreshold = 5; // Set a threshold for max active reads
+    if (activeReads > maxReadsThreshold) {
+      console.warn(`High read load detected: ${activeReads} active reads.`);
+      await connection
+        .promise()
+        .query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
+      await DbConnections.slaveDb_1
+        .query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
+      await DbConnections.slaveDb_2
+        .query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
+
+
+
+      const [rows_1] = await connection.promise().query(
+        `SELECT 
+            game_id,
+            name,
+            release_date,
+            price,
+            short_description,
+            windows,
+            mac,
+            linux,
+            metacritic_score,
+            positive,
+            negative,
+            recommendations,
+            average_playtime_forever,
+            peak_ccu
+        FROM 
+            steamgames.games
+        WHERE 
+            NOT(windows = 1 AND mac = 0 AND linux = 0)
+            AND 
+            NOT(windows = 1 AND mac = 1 AND linux = 1);`
+      );
+      const [rows_2] = await DbConnections.slaveDb_1.query(
+        `
+        SELECT 
+            game_id,
+            name,
+            release_date,
+            price,
+            short_description,
+            windows,
+            mac,
+            linux,
+            metacritic_score,
+            positive,
+            negative,
+            recommendations,
+            average_playtime_forever,
+            peak_ccu
+        FROM 
+            steamgames.windowsgames;
+        `
+      );
+      const [rows_3] = await DbConnections.slaveDb_2.query(
+        `
+        SELECT 
+            game_id,
+            name,
+            release_date,
+            price,
+            short_description,
+            windows,
+            mac,
+            linux,
+            metacritic_score,
+            positive,
+            negative,
+            recommendations,
+            average_playtime_forever,
+            peak_ccu
+        FROM 
+            steamgames.allosgames;
+        `
+      );
+      // Combine all rows
+      const combinedRows = [...rows_1, ...rows_2, ...rows_3];
+      if (combinedRows.length === 0) {
+        return res.status(404).send("No tags found");
+      }
+      res.send(combinedRows);
+    } else {
+      // Set the isolation level for the current session
+      await connection
+        .promise()
+        .query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
+
+      // Execute the SELECT query
+      const [rows] = await connection.promise().query(
+        `SELECT 
         game_id,
         name,
         release_date,
@@ -34,8 +139,46 @@ router.get("/api/games", (req, res) => {
         recommendations,
         average_playtime_forever,
         peak_ccu
-      FROM steamgames.games;`,
-      (err, rows) => {
+      FROM steamgames.games;`
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).send("No tags found");
+      }
+
+      res.send(rows);
+    }
+  } catch (err) {
+    console.error("Error Fetching Data:", err);
+    res.status(500).send("Error Fetching Data");
+  }
+});
+
+// get single game
+router.get("/api/games/:id", (req, res) => {
+  const connection = req.app.get("dbConnection");
+  const { id } = req.params;
+
+  // Set the isolation level for this session
+  connection.query(
+    "SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED",
+    (err) => {
+      if (err) {
+        console.error("Error setting isolation level:", err);
+        return res
+          .status(500)
+          .send({ success: false, message: "Error setting isolation level" });
+      }
+
+      const query = `
+    SELECT
+      game_id, name, release_date, price, short_description,
+      windows, mac, linux, metacritic_score, positive,
+      negative, recommendations, average_playtime_forever, peak_ccu, version
+    FROM steamgames.games WHERE game_id = ?;
+  `;
+
+      connection.query(query, [id], (err, rows) => {
         if (err) {
           console.error("Error Fetching Data:", err);
           return res.status(500).send("Error Fetching Data");
@@ -44,45 +187,10 @@ router.get("/api/games", (req, res) => {
         if (rows.length === 0) {
           return res.status(404).send("No tags found");
         }
-
-        res.send(rows);
-      }
-    );
-  });
-});
-
-// get single game
-router.get("/api/games/:id", (req, res) => {
-  const connection = req.app.get("dbConnection");
-  const { id } = req.params;
-
-// Set the isolation level for this session
-  connection.query("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", (err) => {
-    if (err) {
-    console.error("Error setting isolation level:", err);
-    return res.status(500).send({ success: false, message: "Error setting isolation level" });
-  }
-
-  const query = `
-    SELECT
-      game_id, name, release_date, price, short_description,
-      windows, mac, linux, metacritic_score, positive,
-      negative, recommendations, average_playtime_forever, peak_ccu, version
-    FROM steamgames.games WHERE game_id = ?;
-  `;
-
-  connection.query(query, [id], (err, rows) => {
-    if (err) {
-      console.error("Error Fetching Data:", err);
-      return res.status(500).send("Error Fetching Data");
+        res.send(rows[0]); // Return the single game object directly
+      });
     }
-
-    if (rows.length === 0) {
-      return res.status(404).send("No tags found");
-    }
-    res.send(rows[0]); // Return the single game object directly
-  });
-  });
+  );
 });
 
 // Update
@@ -103,14 +211,16 @@ router.put("/api/games/:id", (req, res) => {
     recommendations,
     average_playtime_forever,
     peak_ccu,
-    version
+    version,
   } = req.body;
 
   // Set isolation level to SERIALIZABLE for this transaction
   connection.query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", (err) => {
     if (err) {
       console.error("Error setting isolation level:", err);
-      return res.status(500).send({ success: false, message: "Error setting isolation level" });
+      return res
+        .status(500)
+        .send({ success: false, message: "Error setting isolation level" });
     }
 
     const query = `
@@ -263,10 +373,19 @@ router.post("/api/games", async (req, res) => {
   } = req.body;
 
   // Input validation
-  if (!name || !release_date || price === undefined || windows === undefined || mac === undefined || linux === undefined) {
-    return res.status(400).send(
-"Missing required fields: name, release_date, price, windows, mac, linux"
-    );
+  if (
+    !name ||
+    !release_date ||
+    price === undefined ||
+    windows === undefined ||
+    mac === undefined ||
+    linux === undefined
+  ) {
+    return res
+      .status(400)
+      .send(
+        "Missing required fields: name, release_date, price, windows, mac, linux"
+      );
   }
 
   const generateGameId = () => Math.floor(100000 + Math.random() * 900000);
@@ -277,10 +396,12 @@ router.post("/api/games", async (req, res) => {
 
     while (!isUnique) {
       gameId = generateGameId();
-      const [rows] = await connection.promise().query(
-        "SELECT COUNT(*) AS count FROM steamgames.games WHERE game_id = ?",
-        [gameId]
-      );
+      const [rows] = await connection
+        .promise()
+        .query(
+          "SELECT COUNT(*) AS count FROM steamgames.games WHERE game_id = ?",
+          [gameId]
+        );
       if (rows[0].count === 0) {
         isUnique = true;
       }
@@ -291,7 +412,9 @@ router.post("/api/games", async (req, res) => {
 
   try {
     // Set isolation level to SERIALIZABLE for unique ID generation
-    await connection.promise().query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+    await connection
+      .promise()
+      .query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
 
     // Begin transaction
     await connection.promise().beginTransaction();
